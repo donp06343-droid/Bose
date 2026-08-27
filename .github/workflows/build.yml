@@ -18,13 +18,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Generar Gradle Wrapper
-        run: |
-          curl -s https://get.sdkman.io | bash || true
-          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          unzip -q gradle-8.7-bin.zip
-          ./gradle-8.7/bin/gradle wrapper --gradle-version 8.7
-          chmod +x gradlew
+      - name: Instalar Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generar wrapper
+        run: gradle wrapper --gradle-version 8.7
 
       - name: Compilar APK debug
         run: ./gradlew assembleDebug --stacktrace
