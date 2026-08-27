@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GhostTouch Blocker</string>
+    <string name="accessibility_service_description">Bloquea únicamente los eventos de la pantalla táctil (ghost touch) sin afectar al mando de juego ni al mouse. Desbloqueo de emergencia con triple pulsación de Volumen+.</string>
+</resources>
