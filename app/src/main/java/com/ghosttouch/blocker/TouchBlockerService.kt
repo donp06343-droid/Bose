@@ -1,13 +1,16 @@
 package com.ghosttouch.blocker
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.InputDevice
@@ -17,6 +20,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.hardware.input.InputManager
+import kotlin.math.abs
 
 class TouchBlockerService : AccessibilityService() {
 
@@ -25,6 +29,8 @@ class TouchBlockerService : AccessibilityService() {
         const val ACTION_SET_BLOCKED = "com.ghosttouch.blocker.SET_BLOCKED"
         const val EXTRA_BLOCKED = "blocked"
         const val ACTION_STATE_CHANGED = "com.ghosttouch.blocker.STATE_CHANGED"
+        const val STICK_THRESHOLD = 0.6f
+        const val SCROLL_COOLDOWN_MS = 350L
 
         @Volatile
         var isBlocked: Boolean = false
@@ -193,5 +199,59 @@ class TouchBlockerService : AccessibilityService() {
                 setBlocked(false)
             }
         }
+    }
+
+    private var lastScrollTime = 0L
+    private var scrollFeatureEnabled = true
+
+    override fun onMotionEvent(event: MotionEvent) {
+        super.onMotionEvent(event)
+
+        if (!scrollFeatureEnabled) return
+
+        val isJoystick = (event.source and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+        if (!isJoystick) return
+
+        val axisY = event.getAxisValue(MotionEvent.AXIS_Y)
+
+        val now = System.currentTimeMillis()
+        if (now - lastScrollTime < SCROLL_COOLDOWN_MS) return
+
+        if (axisY <= -STICK_THRESHOLD) {
+            lastScrollTime = now
+            performScrollGesture(scrollDown = false)
+        } else if (axisY >= STICK_THRESHOLD) {
+            lastScrollTime = now
+            performScrollGesture(scrollDown = true)
+        }
+    }
+
+    private fun performScrollGesture(scrollDown: Boolean) {
+        val metrics = DisplayMetrics()
+        windowManager?.defaultDisplay?.getRealMetrics(metrics)
+        val width = metrics.widthPixels
+        val height = metrics.heightPixels
+
+        val centerX = width / 2f
+        val startY: Float
+        val endY: Float
+
+        if (scrollDown) {
+            startY = height * 0.75f
+            endY = height * 0.25f
+        } else {
+            startY = height * 0.25f
+            endY = height * 0.75f
+        }
+
+        val path = Path()
+        path.moveTo(centerX, startY)
+        path.lineTo(centerX, endY)
+
+        val strokeDescription = GestureDescription.StrokeDescription(path, 0, 220)
+        val gestureBuilder = GestureDescription.Builder()
+        gestureBuilder.addStroke(strokeDescription)
+
+        dispatchGesture(gestureBuilder.build(), null, null)
     }
 }
